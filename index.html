@@ -385,7 +385,7 @@
    ⚠️ 설정: Apps Script 웹앱 URL을 여기에 붙여넣기
    배포 후 받은 URL (.../exec 로 끝남)
    ════════════════════════════════════════ */
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyS01M5v-aMYFrc_-IIVsase1X7cHIbcJRpl7HH1WQMkJsWrx0XQSB18GX5hTaHQEEd/exec';
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
 
 /* ── 문제 목록 ── */
 const BASIC_TOPICS = [
@@ -745,16 +745,35 @@ async function saveResult() {
   document.getElementById('btn-save').textContent = '저장 중...';
 
   try {
-    // Apps Script로 POST (no-cors 모드: 응답 확인 불가하지만 저장은 됨)
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(data)
+    // Apps Script doGet 방식 (CORS 문제 없음)
+    const params = new URLSearchParams({
+      className:     data.className,
+      studentNumber: data.studentNumber,
+      studentName:   data.studentName,
+      basicTopic:    data.basicTopic,
+      basic1:        data.basic1,
+      basic2:        data.basic2,
+      basic3:        data.basic3,
+      basicScore:    data.basicScore,
+      advTopic:      data.advTopic,
+      adv1:          data.adv1,
+      adv2:          data.adv2,
+      adv3:          data.adv3,
+      advScore:      data.advScore,
+      totalScore:    data.totalScore,
+      note:          data.note
     });
-    toast('✅ '+data.studentName+' : '+data.totalScore+'점 저장 완료');
-    document.getElementById('btn-save').textContent = '💾 저장 및 완료';
-    setTimeout(() => { resetAll(); goScreen('s1'); }, 1200);
+
+    const res = await fetch(APPS_SCRIPT_URL + '?' + params.toString());
+    const result = await res.json();
+
+    if (result.ok) {
+      toast('✅ '+data.studentName+' : '+data.totalScore+'점 저장 완료');
+      document.getElementById('btn-save').textContent = '💾 저장 및 완료';
+      setTimeout(() => { resetAll(); goScreen('s1'); }, 1200);
+    } else {
+      throw new Error(result.error || '저장 실패');
+    }
   } catch(err) {
     toast('❌ 저장 실패: '+err.message);
     document.getElementById('btn-save').disabled = false;
