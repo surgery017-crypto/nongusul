@@ -385,7 +385,7 @@
    ⚠️ 설정: Apps Script 웹앱 URL을 여기에 붙여넣기
    배포 후 받은 URL (.../exec 로 끝남)
    ════════════════════════════════════════ */
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyS01M5v-aMYFrc_-IIVsase1X7cHIbcJRpl7HH1WQMkJsWrx0XQSB18GX5hTaHQEEd/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyS0lM5v-aMYFrc_-IIVsaselX7cHIbcJRpl7HH1WQMkJsWrx0XQSB18GX5hTaHQEEd/exec';
 
 /* ── 문제 목록 ── */
 const BASIC_TOPICS = [
@@ -744,41 +744,62 @@ async function saveResult() {
   document.getElementById('btn-save').disabled = true;
   document.getElementById('btn-save').textContent = '저장 중...';
 
-  try {
-    // Apps Script doGet 방식 (CORS 문제 없음)
-    const params = new URLSearchParams({
-      className:     data.className,
-      studentNumber: data.studentNumber,
-      studentName:   data.studentName,
-      basicTopic:    data.basicTopic,
-      basic1:        data.basic1,
-      basic2:        data.basic2,
-      basic3:        data.basic3,
-      basicScore:    data.basicScore,
-      advTopic:      data.advTopic,
-      adv1:          data.adv1,
-      adv2:          data.adv2,
-      adv3:          data.adv3,
-      advScore:      data.advScore,
-      totalScore:    data.totalScore,
-      note:          data.note
-    });
+  // JSONP 방식 (CORS 우회)
+  const params = new URLSearchParams({
+    className:     data.className,
+    studentNumber: data.studentNumber,
+    studentName:   data.studentName,
+    basicTopic:    data.basicTopic,
+    basic1:        data.basic1,
+    basic2:        data.basic2,
+    basic3:        data.basic3,
+    basicScore:    data.basicScore,
+    advTopic:      data.advTopic,
+    adv1:          data.adv1,
+    adv2:          data.adv2,
+    adv3:          data.adv3,
+    advScore:      data.advScore,
+    totalScore:    data.totalScore,
+    note:          data.note,
+    callback:      'handleSaveResult'
+  });
 
-    const res = await fetch(APPS_SCRIPT_URL + '?' + params.toString());
-    const result = await res.json();
+  // 이전 JSONP 스크립트 태그 제거
+  const old = document.getElementById('jsonp-script');
+  if (old) old.remove();
 
+  // 콜백 함수 등록
+  window.handleSaveResult = function(result) {
+    const script = document.getElementById('jsonp-script');
+    if (script) script.remove();
     if (result.ok) {
       toast('✅ '+data.studentName+' : '+data.totalScore+'점 저장 완료');
       document.getElementById('btn-save').textContent = '💾 저장 및 완료';
       setTimeout(() => { resetAll(); goScreen('s1'); }, 1200);
     } else {
-      throw new Error(result.error || '저장 실패');
+      toast('❌ 저장 실패: '+(result.error||''));
+      document.getElementById('btn-save').disabled = false;
+      document.getElementById('btn-save').textContent = '💾 저장 및 완료';
     }
-  } catch(err) {
-    toast('❌ 저장 실패: '+err.message);
+  };
+
+  // 타임아웃 처리 (10초)
+  const saveTimeout = setTimeout(() => {
+    toast('❌ 저장 시간 초과. 네트워크를 확인해 주세요.');
     document.getElementById('btn-save').disabled = false;
     document.getElementById('btn-save').textContent = '💾 저장 및 완료';
-  }
+  }, 10000);
+
+  window._origHandleSave = window.handleSaveResult;
+  window.handleSaveResult = function(result) {
+    clearTimeout(saveTimeout);
+    window._origHandleSave(result);
+  };
+
+  const script = document.createElement('script');
+  script.id  = 'jsonp-script';
+  script.src = APPS_SCRIPT_URL + '?' + params.toString();
+  document.body.appendChild(script);
 }
 
 /* ── 네비게이션 ── */
