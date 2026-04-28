@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>논구술평가 채점</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #242736;
+    --border: #2e3248; --accent: #4f8ef7; --accent2: #7c5cfc;
+    --success: #34d399; --warning: #fbbf24; --danger: #f87171;
+    --text: #e8eaf0; --text2: #9099b5; --text3: #5c6585;
+    --A: #34d399; --B: #fbbf24; --C: #f87171;
+    --radius: 14px; --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden;
+  }
+  .screen { display: none; min-height: 100vh; padding: 16px 16px 40px; flex-direction: column; }
+  .screen.active { display: flex; }
+  .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 0 16px; gap: 8px; }
+  .top-title { font-size: 13px; font-weight: 700; letter-spacing: .12em; color: var(--text3); text-transform: uppercase; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 12px; }
+  .card-title { font-size: 11px; font-weight: 700; letter-spacing: .1em; color: var(--text3); text-transform: uppercase; margin-bottom: 12px; }
+
+  .sel-wrap { position: relative; margin-bottom: 10px; }
+  .sel-wrap select {
+    width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif; font-size: 16px;
+    padding: 13px 40px 13px 14px; appearance: none; cursor: pointer;
+  }
+  .sel-wrap::after { content: '▾'; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text2); pointer-events: none; }
+
+  .tab-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tab-btn {
+    padding: 8px 16px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--text2); font-family: 'Noto Sans KR', sans-serif;
+    font-size: 13px; font-weight: 700; cursor: pointer; transition: all .15s;
+  }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .btn {
+    width: 100%; padding: 15px; border: none; border-radius: var(--radius-sm);
+    font-family: 'Noto Sans KR', sans-serif; font-weight: 700; font-size: 15px;
+    cursor: pointer; transition: all .18s; letter-spacing: .03em;
+  }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; }
+  .btn-success { background: linear-gradient(135deg, #059669, var(--success)); color: #fff; }
+  .btn-ghost { background: transparent; border: 1.5px solid var(--border); color: var(--text2); }
+  .btn-sm { padding: 9px 16px; font-size: 13px; width: auto; }
+  .btn + .btn { margin-top: 8px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .topic-reveal {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px; margin-bottom: 8px;
+  }
+  .topic-num {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 12px; flex-shrink: 0;
+  }
+  .topic-num.basic { background: rgba(79,142,247,.15); color: var(--accent); border: 1.5px solid rgba(79,142,247,.3); }
+  .topic-num.adv   { background: rgba(124,92,252,.15); color: var(--accent2); border: 1.5px solid rgba(124,92,252,.3); }
+  .topic-label { font-size: 10px; color: var(--text3); margin-bottom: 2px; }
+  .topic-name  { font-size: 14px; font-weight: 700; line-height: 1.4; }
+
+  .canvas-wrap {
+    position: relative; background: #fff; border-radius: var(--radius);
+    overflow: hidden; height: 360px; touch-action: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  }
+  #draw-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+
+  .canvas-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--surface);
+    border-radius: var(--radius-sm); margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .tool-btn {
+    width: 34px; height: 34px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border); background: transparent;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; transition: all .15s;
+  }
+  .tool-btn.active { background: var(--accent); border-color: var(--accent); }
+  .color-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: all .15s; flex-shrink: 0; }
+  .color-dot.active { border-color: #fff; transform: scale(1.15); }
+  .size-slider { flex: 1; min-width: 60px; accent-color: var(--accent); }
+  .toolbar-sep { width: 1px; height: 24px; background: var(--border); margin: 0 2px; }
+
+  .timer-compact {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 16px;
+  }
+  .timer-compact .time-num { font-family: 'JetBrains Mono', monospace; font-size: 36px; font-weight: 700; color: var(--text); line-height: 1; }
+  .timer-compact.warn  .time-num { color: var(--warning); }
+  .timer-compact.danger .time-num { color: var(--danger); }
+  .timer-progress-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .timer-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .5s linear, background .5s; width: 100%; }
+  .timer-controls { display: flex; gap: 8px; }
+  .timer-controls .btn { width: auto; padding: 10px 18px; font-size: 13px; }
+
+  .rec-badge {
+    display: none; align-items: center; gap: 6px;
+    background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.35);
+    border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: var(--danger);
+  }
+  .rec-badge.active { display: flex; }
+  .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:.15} }
+
+  .rubric-item { margin-bottom: 12px; }
+  .rubric-item-label { font-size: 13px; color: var(--text2); margin-bottom: 8px; line-height: 1.4; }
+  .grade-row { display: flex; gap: 7px; }
+  .grade-btn {
+    flex: 1; padding: 10px 4px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--border); background: transparent; cursor: pointer;
+    transition: all .15s; font-family: 'Noto Sans KR', sans-serif;
+  }
+  .grade-btn .gl { font-size: 15px; font-weight: 700; display: block; color: var(--text3); }
+  .grade-btn .gs { font-size: 11px; display: block; margin-top: 1px; color: var(--text3); }
+  .grade-btn.A.on { background: rgba(52,211,153,.12); border-color: var(--A); }
+  .grade-btn.A.on .gl, .grade-btn.A.on .gs { color: var(--A); }
+  .grade-btn.B.on { background: rgba(251,191,36,.12); border-color: var(--B); }
+  .grade-btn.B.on .gl, .grade-btn.B.on .gs { color: var(--B); }
+  .grade-btn.C.on { background: rgba(248,113,113,.12); border-color: var(--C); }
+  .grade-btn.C.on .gl, .grade-btn.C.on .gs { color: var(--C); }
+
+  .absent-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 12px; cursor: pointer;
+  }
+  .absent-row input { width: 18px; height: 18px; accent-color: var(--danger); }
+
+  .score-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .score-row:last-child { border-bottom: none; }
+  .score-label { font-size: 13px; color: var(--text2); }
+  .score-val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 18px; }
+  .score-val.basic { color: var(--accent); }
+  .score-val.adv   { color: var(--accent2); }
+  .score-val.total { color: var(--success); font-size: 26px; }
+
+  .note-input {
+    width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif; font-size: 14px;
+    padding: 11px 13px; resize: none; min-height: 64px; margin-top: 8px;
+  }
+  .note-input:focus { outline: none; border-color: var(--accent); }
+
+  .scroll-area { flex: 1; overflow-y: auto; }
+
+  .page-dots { display: flex; justify-content: center; gap: 6px; padding: 12px 0 4px; }
+  .page-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: all .2s; }
+  .page-dot.active { background: var(--accent); width: 18px; border-radius: 3px; }
+
+  #toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 30px;
+    padding: 10px 22px; font-size: 13px; color: var(--text); transition: transform .3s;
+    z-index: 9999; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes spin-out { 0%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.85)}100%{opacity:1;transform:scale(1)} }
+  .spinning { animation: spin-out .45s ease; }
+
+  .section-label {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 11px; font-weight: 700; color: var(--text2);
+    text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px;
+  }
+  .dot-basic { width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0; }
+  .dot-adv   { width:8px;height:8px;border-radius:50%;background:var(--accent2);flex-shrink:0; }
+  .topic-chip {
+    font-size: 11px; color: var(--text3); background: var(--surface2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 6px 10px; margin-bottom: 10px;
+  }
+
+  .config-warn {
+    background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.3);
+    border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;
+    font-size: 13px; color: var(--warning);
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ SCREEN 1 ══ -->
+<div id="s1" class="screen active">
+  <div class="top-bar">
+    <span class="top-title">논구술평가 채점</span>
+    <span id="badge-total" style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace"></span>
+  </div>
+
+  <div id="config-warn" class="config-warn" style="display:none">
+    ⚠️ index.html 상단의 APPS_SCRIPT_URL을 설정해 주세요.
+  </div>
+
+  <div class="card">
+    <div class="card-title">학급 선택</div>
+    <div class="tab-row" id="class-tabs"><span style="font-size:13px;color:var(--text3)">불러오는 중...</span></div>
+    <div class="card-title" style="margin-top:4px">학생 선택</div>
+    <div class="sel-wrap"><select id="student-sel"><option value="">-- 학생을 선택하세요 --</option></select></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">문제 추첨</div>
+    <div id="tr-basic" class="topic-reveal" style="opacity:.35">
+      <div class="topic-num basic">기초</div>
+      <div><div class="topic-label">기초 개념 구술</div><div class="topic-name" id="tn-basic">추첨 전</div></div>
+    </div>
+    <div id="tr-adv" class="topic-reveal" style="opacity:.35;margin-bottom:0">
+      <div class="topic-num adv">기본</div>
+      <div><div class="topic-label">기본 개념 구술</div><div class="topic-name" id="tn-adv">추첨 전</div></div>
+    </div>
+    <button class="btn btn-primary" id="btn-draw" style="margin-top:12px" onclick="drawTopics()">🎲 문제 추첨</button>
+  </div>
+
+  <div class="page-dots"><div class="page-dot active"></div><div class="page-dot"></div><div class="page-dot"></div></div>
+  <button class="btn btn-success" id="btn-next1" style="margin-top:auto" disabled onclick="goTimer()">평가 시작 →</button>
+</div>
+
+
+<!-- ══ SCREEN 2 ══ -->
+<div id="s2" class="screen">
+  <div class="top-bar">
+    <button class="btn btn-ghost btn-sm" onclick="goBack('s1')">← 뒤로</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div id="rec-badge" class="rec-badge"><div class="rec-dot"></div>REC</div>
+      <span style="font-size:14px;font-weight:700;color:var(--text2)" id="s2-student"></span>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <div style="flex:1;background:rgba(79,142,247,.08);border:1px solid rgba(79,142,247,.2);border-radius:var(--radius-sm);padding:9px 11px">
+      <div style="font-size:10px;color:var(--accent);font-weight:700;margin-bottom:3px">기초</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);line-height:1.35" id="s2-basic-topic">-</div>
+    </div>
+    <div style="flex:1;background:rgba(124,92,252,.08);border:1px solid rgba(124,92,252,.2);border-radius:var(--radius-sm);padding:9px 11px">
+      <div style="font-size:10px;color:var(--accent2);font-weight:700;margin-bottom:3px">기본</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);line-height:1.35" id="s2-adv-topic">-</div>
+    </div>
+  </div>
+
+  <div class="timer-compact" id="timer-box">
+    <div>
+      <div class="time-num" id="time-display">2:30</div>
+      <div class="timer-progress-bar" style="width:160px"><div class="timer-progress-fill" id="timer-fill"></div></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px" id="timer-status-txt">대기 중</div>
+    </div>
+    <div class="timer-controls">
+      <button class="btn btn-primary btn-sm" id="btn-start" onclick="startTimer()">▶ 시작</button>
+      <button class="btn btn-ghost btn-sm" onclick="resetTimer()">↺</button>
+    </div>
+  </div>
+
+  <div class="canvas-toolbar">
+    <button class="tool-btn active" id="tool-pen" onclick="setTool('pen')">✏️</button>
+    <button class="tool-btn" id="tool-eraser" onclick="setTool('eraser')">⬜</button>
+    <div class="toolbar-sep"></div>
+    <div class="color-dot active" style="background:#1a1a2e" onclick="setColor('#1a1a2e',this)"></div>
+    <div class="color-dot" style="background:#1e5ef3" onclick="setColor('#1e5ef3',this)"></div>
+    <div class="color-dot" style="background:#e53935" onclick="setColor('#e53935',this)"></div>
+    <div class="color-dot" style="background:#2e7d32" onclick="setColor('#2e7d32',this)"></div>
+    <div class="toolbar-sep"></div>
+    <input type="range" class="size-slider" id="pen-size" min="1" max="16" value="3">
+    <div class="toolbar-sep"></div>
+    <button class="tool-btn" onclick="clearCanvas()">🗑️</button>
+  </div>
+
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="draw-canvas"></canvas>
+  </div>
+
+  <div class="page-dots"><div class="page-dot"></div><div class="page-dot active"></div><div class="page-dot"></div></div>
+  <button class="btn btn-primary" style="margin-top:10px" onclick="goRubric()">채점하기 →</button>
+</div>
+
+
+<!-- ══ SCREEN 3 ══ -->
+<div id="s3" class="screen">
+  <div class="top-bar">
+    <button class="btn btn-ghost btn-sm" onclick="goBack('s2')">← 뒤로</button>
+    <span style="font-size:13px;font-weight:700;color:var(--text2)" id="s3-student"></span>
+  </div>
+
+  <div class="scroll-area">
+    <div class="absent-row" onclick="toggleAbsent()">
+      <input type="checkbox" id="absent-chk" onclick="event.stopPropagation();toggleAbsent()">
+      <label>미응시 / 미제출 처리 (최저점 50% 인정)</label>
+    </div>
+
+    <div id="rubric-body">
+      <div class="card" style="margin-bottom:12px">
+        <div class="section-label"><div class="dot-basic"></div>기초 개념 구술 (45점)</div>
+        <div class="topic-chip" id="r-basic-chip"></div>
+        <div class="rubric-item">
+          <div class="rubric-item-label">① 개념의 뜻에 대하여 정확하게 말하기</div>
+          <div class="grade-row">
+            <button class="grade-btn A" onclick="pick(this,'b',0,'A',15)"><span class="gl">A</span><span class="gs">15점</span></button>
+            <button class="grade-btn B" onclick="pick(this,'b',0,'B',10)"><span class="gl">B</span><span class="gs">10점</span></button>
+            <button class="grade-btn C" onclick="pick(this,'b',0,'C',5)"><span class="gl">C</span><span class="gs">5점</span></button>
+          </div>
+        </div>
+        <div class="rubric-item">
+          <div class="rubric-item-label">② 개념에 적절한 예 제시하기</div>
+          <div class="grade-row">
+            <button class="grade-btn A" onclick="pick(this,'b',1,'A',15)"><span class="gl">A</span><span class="gs">15점</span></button>
+            <button class="grade-btn B" onclick="pick(this,'b',1,'B',10)"><span class="gl">B</span><span class="gs">10점</span></button>
+            <button class="grade-btn C" onclick="pick(this,'b',1,'C',5)"><span class="gl">C</span><span class="gs">5점</span></button>
+          </div>
+        </div>
+        <div class="rubric-item" style="margin-bottom:0">
+          <div class="rubric-item-label">③ 예에 대하여 정확하게 설명하기</div>
+          <div class="grade-row">
+            <button class="grade-btn A" onclick="pick(this,'b',2,'A',15)"><span class="gl">A</span><span class="gs">15점</span></button>
+            <button class="grade-btn B" onclick="pick(this,'b',2,'B',10)"><span class="gl">B</span><span class="gs">10점</span></button>
+            <button class="grade-btn C" onclick="pick(this,'b',2,'C',5)"><span class="gl">C</span><span class="gs">5점</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="section-label"><div class="dot-adv"></div>기본 개념 구술 (55점)</div>
+        <div class="topic-chip" id="r-adv-chip"></div>
+        <div class="rubric-item">
+          <div class="rubric-item-label">① 개념의 뜻에 대하여 정확하게 말하기</div>
+          <div class="grade-row">
+            <button class="grade-btn A" onclick="pick(this,'a',0,'A',20)"><span class="gl">A</span><span class="gs">20점</span></button>
+            <button class="grade-btn B" onclick="pick(this,'a',0,'B',15)"><span class="gl">B</span><span class="gs">15점</span></button>
+            <button class="grade-btn C" onclick="pick(this,'a',0,'C',10)"><span class="gl">C</span><span class="gs">10점</span></button>
+          </div>
+        </div>
+        <div class="rubric-item">
+          <div class="rubric-item-label">② 개념에 적절한 예 제시하기</div>
+          <div class="grade-row">
+            <button class="grade-btn A" onclick="pick(this,'a',1,'A',15)"><span class="gl">A</span><span class="gs">15점</span></button>
+            <button class="grade-btn B" onclick="pick(this,'a',1,'B',10)"><span class="gl">B</span><span class="gs">10점</span></button>
+            <button class="grade-btn C" onclick="pick(this,'a',1,'C',5)"><span class="gl">C</span><span class="gs">5점</span></button>
+          </div>
+        </div>
+        <div class="rubric-item" style="margin-bottom:0">
+          <div class="rubric-item-label">③ 예에 대하여 정확하게 설명하기</div>
+          <div class="grade-row">
+            <button class="grade-btn A" onclick="pick(this,'a',2,'A',20)"><span class="gl">A</span><span class="gs">20점</span></button>
+            <button class="grade-btn B" onclick="pick(this,'a',2,'B',15)"><span class="gl">B</span><span class="gs">15점</span></button>
+            <button class="grade-btn C" onclick="pick(this,'a',2,'C',10)"><span class="gl">C</span><span class="gs">10점</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">점수 집계</div>
+        <div class="score-row"><span class="score-label">기초 개념 구술</span><span class="score-val basic" id="sc-basic">- 점</span></div>
+        <div class="score-row"><span class="score-label">기본 개념 구술</span><span class="score-val adv" id="sc-adv">- 점</span></div>
+        <div class="score-row" style="padding-top:12px"><span style="font-size:15px;font-weight:700">총점</span><span class="score-val total" id="sc-total">- 점</span></div>
+      </div>
+
+      <div style="margin-bottom:80px">
+        <div class="card-title">비고 (선택)</div>
+        <textarea class="note-input" id="note-in" placeholder="특이사항..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-dots"><div class="page-dot"></div><div class="page-dot"></div><div class="page-dot active"></div></div>
+  <button class="btn btn-success" id="btn-save" disabled onclick="saveResult()">💾 저장 및 완료</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════
+   ⚠️ 설정: Apps Script 웹앱 URL을 여기에 붙여넣기
+   배포 후 받은 URL (.../exec 로 끝남)
+   ════════════════════════════════════════ */
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
+
+/* ── 문제 목록 ── */
+const BASIC_TOPICS = [
+  '유한소수로 나타낼 수 있는 유리수','지수 법칙','부등식의 성질',
+  '함수의 뜻','평행이동과 절편','두 일차함수의 그래프와 연립방정식의 관계'
+];
+const ADV_TOPICS = [
+  '순환소수를 분수로 나타내는 방법','연립방정식의 풀이',
+  '일차함수의 그래프 그리기','일차함수와 미지수가 2개인 일차방정식의 관계'
+];
+
+/* ── 상태 ── */
+const S = {
+  allStudents: [], classes: [], curClass: null,
+  student: null, basicTopic: null, advTopic: null,
+  grades: { b:[null,null,null], a:[null,null,null] },
+  scores: { b:[null,null,null], a:[null,null,null] },
+  absent: false,
+  timerLeft: 150, timerRunning: false, timerInterval: null,
+  mediaRecorder: null, recChunks: [], recording: false,
+  drawTool: 'pen', drawColor: '#1a1a2e', drawSize: 3,
+  drawing: false, lastX: 0, lastY: 0
+};
+const TOTAL = 150;
+
+/* ── 초기화 ── */
+window.onload = async () => {
+  if (APPS_SCRIPT_URL.includes('YOUR_APPS_SCRIPT_URL')) {
+    document.getElementById('config-warn').style.display = 'block';
+  }
+  await loadStudents();
+  initCanvas();
+  updateTimerUI();
+};
+
+/* ── 학생 명단 로드 (students.json) ── */
+async function loadStudents() {
+  try {
+    const res = await fetch('./students.json');
+    const students = await res.json();
+    S.allStudents = students;
+    const classSet = [...new Set(students.map(s => String(s.className)).filter(Boolean))];
+    S.classes = classSet.length ? classSet.sort() : ['전체'];
+    if (!classSet.length) S.allStudents = students.map(s=>({...s,className:'전체'}));
+    document.getElementById('badge-total').textContent = students.length + '명';
+    buildClassTabs();
+    selectClass(S.classes[0]);
+  } catch(e) {
+    document.getElementById('class-tabs').innerHTML =
+      '<span style="color:var(--danger);font-size:13px">students.json 파일을 찾을 수 없습니다</span>';
+  }
+}
+
+function buildClassTabs() {
+  const wrap = document.getElementById('class-tabs');
+  wrap.innerHTML = '';
+  S.classes.forEach(cls => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn';
+    btn.textContent = cls + '반';
+    btn.onclick = () => selectClass(cls);
+    wrap.appendChild(btn);
+  });
+}
+
+function selectClass(cls) {
+  S.curClass = cls;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === cls + '반');
+  });
+  const filtered = S.allStudents.filter(s => String(s.className) === String(cls));
+  const sel = document.getElementById('student-sel');
+  sel.innerHTML = '<option value="">-- 학생을 선택하세요 --</option>';
+  filtered.forEach(s => {
+    const o = document.createElement('option');
+    o.value = JSON.stringify(s);
+    o.textContent = s.number + '번 ' + s.name;
+    sel.appendChild(o);
+  });
+  S.student = null;
+  document.getElementById('btn-next1').disabled = true;
+}
+
+document.getElementById('student-sel').addEventListener('change', function() {
+  if (!this.value) return;
+  S.student = JSON.parse(this.value);
+  document.getElementById('btn-next1').disabled = !S.basicTopic;
+});
+
+/* ── 추첨 ── */
+function drawTopics() {
+  if (!S.student) { toast('먼저 학생을 선택하세요'); return; }
+  const bi = Math.floor(Math.random() * BASIC_TOPICS.length);
+  const ai = Math.floor(Math.random() * ADV_TOPICS.length);
+  S.basicTopic = BASIC_TOPICS[bi]; S.advTopic = ADV_TOPICS[ai];
+  ['tr-basic','tr-adv'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.opacity = '1'; el.classList.add('spinning');
+    setTimeout(() => el.classList.remove('spinning'), 450);
+  });
+  document.getElementById('tn-basic').textContent = (bi+1)+'. '+S.basicTopic;
+  document.getElementById('tn-adv').textContent   = (ai+1)+'. '+S.advTopic;
+  document.getElementById('btn-next1').disabled = !S.student;
+}
+
+/* ── 타이머 화면 진입 ── */
+function goTimer() {
+  document.getElementById('s2-student').textContent = S.student.number+'번 '+S.student.name;
+  document.getElementById('s2-basic-topic').textContent = S.basicTopic;
+  document.getElementById('s2-adv-topic').textContent   = S.advTopic;
+  resetTimer();
+  clearCanvas();
+  goScreen('s2');
+}
+
+/* ── 타이머 ── */
+function startTimer() {
+  if (S.timerRunning) return;
+  S.timerRunning = true;
+  document.getElementById('btn-start').disabled = true;
+  document.getElementById('timer-status-txt').textContent = '진행 중...';
+  startRecording();
+  S.timerInterval = setInterval(() => {
+    S.timerLeft--;
+    updateTimerUI();
+    if (S.timerLeft <= 0) {
+      clearInterval(S.timerInterval);
+      S.timerRunning = false;
+      document.getElementById('timer-status-txt').textContent = '⏰ 시간 종료!';
+      stopRecording();
+    }
+  }, 1000);
+}
+
+function resetTimer() {
+  clearInterval(S.timerInterval);
+  S.timerRunning = false; S.timerLeft = TOTAL;
+  document.getElementById('btn-start').disabled = false;
+  document.getElementById('timer-status-txt').textContent = '대기 중';
+  updateTimerUI();
+  stopRecording();
+}
+
+function updateTimerUI() {
+  const m = Math.floor(S.timerLeft/60), s = S.timerLeft%60;
+  document.getElementById('time-display').textContent = m+':'+String(s).padStart(2,'0');
+  document.getElementById('timer-fill').style.width = (S.timerLeft/TOTAL)*100+'%';
+  const fill = document.getElementById('timer-fill');
+  const box = document.getElementById('timer-box');
+  box.className = 'timer-compact';
+  if (S.timerLeft <= 30) { fill.style.background = 'var(--danger)'; box.classList.add('danger'); }
+  else if (S.timerLeft <= 60) { fill.style.background = 'var(--warning)'; box.classList.add('warn'); }
+  else { fill.style.background = 'var(--accent)'; }
+}
+
+/* ── 녹화 (캔버스 + 마이크) ── */
+async function startRecording() {
+  try {
+    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const canvas = document.getElementById('draw-canvas');
+    const canvasStream = canvas.captureStream(30);
+    const tracks = [...canvasStream.getVideoTracks(), ...audioStream.getAudioTracks()];
+    const combined = new MediaStream(tracks);
+    S.mediaRecorder = new MediaRecorder(combined, { mimeType: getSupportedMime() });
+    S.recChunks = [];
+    S.mediaRecorder.ondataavailable = e => { if(e.data.size>0) S.recChunks.push(e.data); };
+    S.mediaRecorder.onstop = downloadRecording;
+    S.mediaRecorder.start(1000);
+    S.recording = true;
+    document.getElementById('rec-badge').classList.add('active');
+    toast('🔴 녹화 시작 (캔버스 + 음성)');
+  } catch(e) {
+    console.warn('녹화 실패:', e);
+    toast('⚠️ 마이크 권한이 거부되었어요');
+  }
+}
+
+function stopRecording() {
+  if (S.mediaRecorder && S.mediaRecorder.state !== 'inactive') {
+    S.mediaRecorder.stop();
+    S.mediaRecorder.stream.getTracks().forEach(t => t.stop());
+  }
+  S.recording = false;
+  document.getElementById('rec-badge').classList.remove('active');
+}
+
+function getSupportedMime() {
+  const types = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
+  return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
+
+function downloadRecording() {
+  if (!S.recChunks.length) return;
+  const blob = new Blob(S.recChunks, { type: 'video/webm' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const cls = S.student ? S.student.className : '';
+  const name = (cls ? cls+'반_' : '') + (S.student ? S.student.number+'_'+S.student.name : '학생') + '_논구술.webm';
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ── 캔버스 ── */
+function initCanvas() {
+  const canvas = document.getElementById('draw-canvas');
+  const wrap = document.getElementById('canvas-wrap');
+
+  function resize() {
+    const w = wrap.clientWidth, h = wrap.clientHeight || 360;
+    let imgData = null;
+    try { imgData = canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height); } catch(e){}
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,w,h);
+    if (imgData) try { ctx.putImageData(imgData,0,0); } catch(e){}
+  }
+  new ResizeObserver(resize).observe(wrap);
+  setTimeout(resize, 50);
+
+  function startDraw(x, y) {
+    S.drawing = true; S.lastX = x; S.lastY = y;
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath(); ctx.arc(x, y, S.drawSize/2, 0, Math.PI*2);
+    ctx.fillStyle = S.drawTool==='eraser' ? '#ffffff' : S.drawColor;
+    ctx.fill();
+  }
+  function moveDraw(x, y) {
+    if (!S.drawing) return;
+    const ctx = canvas.getContext('2d');
+    ctx.beginPath(); ctx.moveTo(S.lastX, S.lastY); ctx.lineTo(x, y);
+    ctx.strokeStyle = S.drawTool==='eraser' ? '#ffffff' : S.drawColor;
+    ctx.lineWidth = S.drawTool==='eraser' ? S.drawSize*3 : S.drawSize;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    S.lastX = x; S.lastY = y;
+  }
+  function endDraw() { S.drawing = false; }
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const t = e.touches[0]; const {x,y} = getPosFromTouch(canvas, t);
+    startDraw(x, y);
+  }, { passive: false });
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const t = e.touches[0]; const {x,y} = getPosFromTouch(canvas, t);
+    moveDraw(x, y);
+  }, { passive: false });
+  canvas.addEventListener('touchend',    e => { e.preventDefault(); endDraw(); }, { passive: false });
+  canvas.addEventListener('touchcancel', e => { e.preventDefault(); endDraw(); }, { passive: false });
+
+  canvas.addEventListener('mousedown', e => { const {x,y} = getPos(canvas, e); startDraw(x, y); });
+  canvas.addEventListener('mousemove', e => { if (!S.drawing) return; const {x,y} = getPos(canvas, e); moveDraw(x, y); });
+  canvas.addEventListener('mouseup', endDraw);
+  canvas.addEventListener('mouseleave', endDraw);
+}
+
+function getPos(canvas, e) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * (canvas.width/r.width),
+           y: (e.clientY - r.top)  * (canvas.height/r.height) };
+}
+function getPosFromTouch(canvas, t) {
+  const r = canvas.getBoundingClientRect();
+  return { x: (t.clientX - r.left) * (canvas.width/r.width),
+           y: (t.clientY - r.top)  * (canvas.height/r.height) };
+}
+
+function setTool(t) {
+  S.drawTool = t;
+  document.getElementById('tool-pen').classList.toggle('active', t==='pen');
+  document.getElementById('tool-eraser').classList.toggle('active', t==='eraser');
+}
+function setColor(c, el) {
+  S.drawColor = c; S.drawTool = 'pen';
+  document.querySelectorAll('.color-dot').forEach(d=>d.classList.remove('active'));
+  el.classList.add('active'); setTool('pen');
+}
+document.getElementById('pen-size').addEventListener('input', function() { S.drawSize = +this.value; });
+
+function clearCanvas() {
+  const canvas = document.getElementById('draw-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+/* ── 루브릭 ── */
+function goRubric() {
+  document.getElementById('s3-student').textContent = S.student.number+'번 '+S.student.name;
+  document.getElementById('r-basic-chip').textContent = '📌 기초: '+S.basicTopic;
+  document.getElementById('r-adv-chip').textContent   = '📌 기본: '+S.advTopic;
+  S.grades = {b:[null,null,null],a:[null,null,null]};
+  S.scores = {b:[null,null,null],a:[null,null,null]};
+  S.absent = false;
+  document.getElementById('absent-chk').checked = false;
+  document.querySelectorAll('.grade-btn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('rubric-body').style.opacity='1';
+  document.getElementById('rubric-body').style.pointerEvents='';
+  updateScores();
+  goScreen('s3');
+}
+
+function pick(btn, sec, idx, grade, score) {
+  if (S.absent) return;
+  btn.closest('.grade-row').querySelectorAll('.grade-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  S.grades[sec][idx] = grade;
+  S.scores[sec][idx] = score;
+  updateScores();
+}
+
+function toggleAbsent() {
+  S.absent = !S.absent;
+  document.getElementById('absent-chk').checked = S.absent;
+  const body = document.getElementById('rubric-body');
+  body.style.opacity = S.absent ? '0.4' : '1';
+  body.style.pointerEvents = S.absent ? 'none' : '';
+  if (S.absent) S.scores = { b:[2.5,2.5,2.5], a:[5,2.5,5] };
+  else          S.scores = { b:[null,null,null], a:[null,null,null] };
+  updateScores();
+}
+
+function updateScores() {
+  const bDone = S.scores.b.every(v=>v!==null);
+  const aDone = S.scores.a.every(v=>v!==null);
+  const bSum = bDone ? S.scores.b.reduce((a,b)=>a+b,0) : null;
+  const aSum = aDone ? S.scores.a.reduce((a,b)=>a+b,0) : null;
+  document.getElementById('sc-basic').textContent = bSum!==null ? bSum+' 점' : '- 점';
+  document.getElementById('sc-adv').textContent   = aSum!==null ? aSum+' 점' : '- 점';
+  if (bSum!==null && aSum!==null) {
+    document.getElementById('sc-total').textContent = (bSum+aSum)+' 점';
+    document.getElementById('btn-save').disabled = false;
+  } else {
+    document.getElementById('sc-total').textContent = '- 점';
+    document.getElementById('btn-save').disabled = true;
+  }
+}
+
+/* ── 저장 (Apps Script로 POST) ── */
+async function saveResult() {
+  const bSum = S.scores.b.reduce((a,b)=>a+b,0);
+  const aSum = S.scores.a.reduce((a,b)=>a+b,0);
+  const g = (arr,i) => arr[i] || '미응시';
+  const data = {
+    studentNumber: S.student.number, studentName: S.student.name,
+    className: S.student.className || '',
+    basicTopic: S.basicTopic,
+    basic1: g(S.grades.b,0), basic2: g(S.grades.b,1), basic3: g(S.grades.b,2),
+    basicScore: bSum,
+    advTopic: S.advTopic,
+    adv1: g(S.grades.a,0), adv2: g(S.grades.a,1), adv3: g(S.grades.a,2),
+    advScore: aSum,
+    totalScore: bSum+aSum,
+    note: document.getElementById('note-in').value
+  };
+
+  document.getElementById('btn-save').disabled = true;
+  document.getElementById('btn-save').textContent = '저장 중...';
+
+  try {
+    // Apps Script로 POST (no-cors 모드: 응답 확인 불가하지만 저장은 됨)
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(data)
+    });
+    toast('✅ '+data.studentName+' : '+data.totalScore+'점 저장 완료');
+    document.getElementById('btn-save').textContent = '💾 저장 및 완료';
+    setTimeout(() => { resetAll(); goScreen('s1'); }, 1200);
+  } catch(err) {
+    toast('❌ 저장 실패: '+err.message);
+    document.getElementById('btn-save').disabled = false;
+    document.getElementById('btn-save').textContent = '💾 저장 및 완료';
+  }
+}
+
+/* ── 네비게이션 ── */
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function goBack(id) { goScreen(id); }
+
+function resetAll() {
+  S.student=null; S.basicTopic=null; S.advTopic=null;
+  document.getElementById('student-sel').value='';
+  document.getElementById('tn-basic').textContent='추첨 전';
+  document.getElementById('tn-adv').textContent='추첨 전';
+  document.getElementById('tr-basic').style.opacity='.35';
+  document.getElementById('tr-adv').style.opacity='.35';
+  document.getElementById('btn-next1').disabled=true;
+  document.getElementById('note-in').value='';
+  resetTimer();
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>

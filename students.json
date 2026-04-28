@@ -1,0 +1,17 @@
+[
+  { "number": 1, "name": "김민준", "className": "1" },
+  { "number": 2, "name": "이서연", "className": "1" },
+  { "number": 3, "name": "박지호", "className": "1" },
+
+  { "number": 1, "name": "최수아", "className": "2" },
+  { "number": 2, "name": "정도윤", "className": "2" },
+
+  { "number": 1, "name": "강하은", "className": "3" },
+  { "number": 2, "name": "윤시우", "className": "3" },
+
+  { "number": 1, "name": "임지유", "className": "4" },
+
+  { "number": 1, "name": "한준서", "className": "5" },
+
+  { "number": 1, "name": "오서진", "className": "6" }
+]
