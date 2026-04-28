@@ -784,7 +784,17 @@ async function saveResult() {
     if (result.ok) {
       toast('✅ '+data.studentName+' : '+data.totalScore+'점 저장 완료');
       document.getElementById('btn-save').textContent = '💾 저장 및 완료';
-      setTimeout(() => { resetAll(); goScreen('s1'); }, 1200);
+      setTimeout(() => {
+        // resetAll 전에 학생 정보 백업 (파일명용)
+        S.lastStudentForRec = S.student ? {
+          className: S.student.className,
+          number:    S.student.number,
+          name:      S.student.name
+        } : S.lastStudentForRec;
+        stopRecording();
+        resetAll();
+        goScreen('s1');
+      }, 1200);
     } else {
       toast('❌ 저장 실패: '+(result.error||''));
       document.getElementById('btn-save').disabled = false;
