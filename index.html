@@ -582,8 +582,10 @@ function downloadRecording() {
   const blob = new Blob(S.recChunks, { type: 'video/webm' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const cls = S.student ? S.student.className : '';
-  const name = (cls ? cls+'반_' : '') + (S.student ? S.student.number+'_'+S.student.name : '학생') + '_논구술.webm';
+  const cls  = S.student ? S.student.className : '';
+  const num  = S.student ? S.student.number : '';
+  const name_str = S.student ? S.student.name : '학생';
+  const name = (cls ? cls+'반_' : '') + (num ? num+'번_' : '') + name_str + '_논구술.webm';
   a.href = url; a.download = name; a.click();
   URL.revokeObjectURL(url);
 }
