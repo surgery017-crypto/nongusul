@@ -565,6 +565,12 @@ async function startRecording() {
 
 function stopRecording() {
   if (S.mediaRecorder && S.mediaRecorder.state !== 'inactive') {
+    // 다운로드 파일명을 위해 학생 정보 미리 저장
+    S.lastStudentForRec = S.student ? {
+      className: S.student.className,
+      number:    S.student.number,
+      name:      S.student.name
+    } : null;
     S.mediaRecorder.stop();
     S.mediaRecorder.stream.getTracks().forEach(t => t.stop());
   }
@@ -582,9 +588,10 @@ function downloadRecording() {
   const blob = new Blob(S.recChunks, { type: 'video/webm' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const cls  = S.student ? S.student.className : '';
-  const num  = S.student ? S.student.number : '';
-  const name_str = S.student ? S.student.name : '학생';
+  const stu  = S.lastStudentForRec || S.student;
+  const cls  = stu ? stu.className : '';
+  const num  = stu ? stu.number : '';
+  const name_str = stu ? stu.name : '학생';
   const name = (cls ? cls+'반_' : '') + (num ? num+'번_' : '') + name_str + '_논구술.webm';
   a.href = url; a.download = name; a.click();
   URL.revokeObjectURL(url);
