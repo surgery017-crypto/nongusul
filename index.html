@@ -833,6 +833,7 @@ function goScreen(id) {
 function goBack(id) { goScreen(id); }
 
 function resetAll() {
+  S.lastStudentForRec=null;
   S.student=null; S.basicTopic=null; S.advTopic=null;
   document.getElementById('student-sel').value='';
   document.getElementById('tn-basic').textContent='추첨 전';
