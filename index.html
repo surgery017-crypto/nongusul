@@ -784,17 +784,21 @@ async function saveResult() {
     if (result.ok) {
       toast('✅ '+data.studentName+' : '+data.totalScore+'점 저장 완료');
       document.getElementById('btn-save').textContent = '💾 저장 및 완료';
-      setTimeout(() => {
-        // resetAll 전에 학생 정보 백업 (파일명용)
-        S.lastStudentForRec = S.student ? {
-          className: S.student.className,
-          number:    S.student.number,
-          name:      S.student.name
-        } : S.lastStudentForRec;
-        stopRecording();
-        resetAll();
-        goScreen('s1');
-      }, 1200);
+      // 학생 정보 백업 (파일명용) - 저장 직후 즉시
+      S.lastStudentForRec = S.student ? {
+        className: S.student.className,
+        number:    S.student.number,
+        name:      S.student.name
+      } : S.lastStudentForRec;
+
+      // 녹화 중이면 멈추고 다운로드 (비동기로 처리)
+      if (S.recording) {
+        stopRecording();  // onstop 콜백에서 downloadRecording 호출됨
+        setTimeout(() => { resetAll(); goScreen('s1'); }, 1500);
+      } else {
+        // 녹화 안 했으면 바로 다음 학생
+        setTimeout(() => { resetAll(); goScreen('s1'); }, 1200);
+      }
     } else {
       toast('❌ 저장 실패: '+(result.error||''));
       document.getElementById('btn-save').disabled = false;
