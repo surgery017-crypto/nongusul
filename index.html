@@ -114,6 +114,12 @@
     border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 700; color: var(--danger);
   }
   .rec-badge.active { display: flex; }
+  .rec-badge.fail { background: rgba(251,191,36,.15); border-color: rgba(251,191,36,.5); color: var(--warning); }
+  .rec-badge.fail .rec-dot { background: var(--warning); animation: none; }
+  .rec-badge.done { background: rgba(52,211,153,.12); border-color: rgba(52,211,153,.4); color: var(--success); }
+  .rec-badge.done .rec-dot { background: var(--success); animation: none; }
+  .rb-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text2); }
+  .rb-row:last-child { border-bottom: none; }
   .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); animation: blink 1s infinite; }
   @keyframes blink { 0%,100%{opacity:1}50%{opacity:.15} }
 
@@ -208,7 +214,12 @@
   </div>
 
   <div class="card">
-    <div class="card-title">학급 선택</div>
+    <div class="card-title">학기 선택</div>
+    <div class="tab-row" id="sem-tabs">
+      <button class="tab-btn" id="sem-1" onclick="setSemester('1')">1학기</button>
+      <button class="tab-btn active" id="sem-2" onclick="setSemester('2')">2학기</button>
+    </div>
+    <div class="card-title" style="margin-top:4px">학급 선택</div>
     <div class="tab-row" id="class-tabs"><span style="font-size:13px;color:var(--text3)">불러오는 중...</span></div>
     <div class="card-title" style="margin-top:4px">학생 선택</div>
     <div class="sel-wrap"><select id="student-sel"><option value="">-- 학생을 선택하세요 --</option></select></div>
@@ -227,6 +238,11 @@
     <button class="btn btn-primary" id="btn-draw" style="margin-top:12px" onclick="drawTopics()">🎲 문제 추첨</button>
   </div>
 
+  <div class="card" id="rec-backup-card" style="display:none">
+    <div class="card-title">최근 녹화 (파일이 안 보이면 다시 받기)</div>
+    <div id="rec-backup-list"></div>
+  </div>
+
   <div class="page-dots"><div class="page-dot active"></div><div class="page-dot"></div><div class="page-dot"></div></div>
   <button class="btn btn-success" id="btn-next1" style="margin-top:auto" disabled onclick="goTimer()">평가 시작 →</button>
 </div>
@@ -237,7 +253,7 @@
   <div class="top-bar">
     <button class="btn btn-ghost btn-sm" onclick="goBack('s1')">← 뒤로</button>
     <div style="display:flex;align-items:center;gap:8px">
-      <div id="rec-badge" class="rec-badge"><div class="rec-dot"></div>REC</div>
+      <div id="rec-badge" class="rec-badge"><div class="rec-dot"></div><span id="rec-badge-txt">REC</span></div>
       <span style="font-size:14px;font-weight:700;color:var(--text2)" id="s2-student"></span>
     </div>
   </div>
@@ -261,7 +277,7 @@
     </div>
     <div class="timer-controls">
       <button class="btn btn-primary btn-sm" id="btn-start" onclick="startTimer()">▶ 시작</button>
-      <button class="btn btn-ghost btn-sm" onclick="resetTimer()">↺</button>
+      <button class="btn btn-ghost btn-sm" onclick="onResetClick()">↺</button>
     </div>
   </div>
 
@@ -385,27 +401,42 @@
    ⚠️ 설정: Apps Script 웹앱 URL을 여기에 붙여넣기
    배포 후 받은 URL (.../exec 로 끝남)
    ════════════════════════════════════════ */
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyS0lM5v-aMYFrc_-IIVsaselX7cHIbcJRpl7HH1WQMkJsWrx0XQSB18GX5hTaHQEEd/exec';
+const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE';
 
-/* ── 문제 목록 ── */
-const BASIC_TOPICS = [
-  '유한소수로 나타낼 수 있는 유리수','지수 법칙','부등식의 성질',
-  '함수의 뜻','평행이동과 절편','두 일차함수의 그래프와 연립방정식의 관계'
-];
-const ADV_TOPICS = [
-  '순환소수를 분수로 나타내는 방법','연립방정식의 풀이',
-  '일차함수의 그래프 그리기','일차함수와 미지수가 2개인 일차방정식의 관계'
-];
+/* ── 문제 목록 (학기별) ── */
+const TOPICS = {
+  '1': {
+    basic: [
+      '유한소수로 나타낼 수 있는 유리수','지수 법칙','부등식의 성질',
+      '함수의 뜻','평행이동과 절편','두 일차함수의 그래프와 연립방정식의 관계'
+    ],
+    adv: [
+      '순환소수를 분수로 나타내는 방법','연립방정식의 풀이',
+      '일차함수의 그래프 그리기','일차함수와 미지수가 2개인 일차방정식의 관계'
+    ]
+  },
+  '2': {
+    basic: [
+      '직각삼각형의 합동조건','삼각형의 외심의 정의와 성질','삼각형의 내심의 정의와 성질',
+      '도형의 닮음 정의와 평면도형에서 닮음의 성질','삼각형의 닮음조건',
+      '삼각형에서 평행선 사이의 선분의 길이의 비','닮은 도형의 넓이와 부피','피타고라스 정리'
+    ],
+    adv: [
+      '이등변삼각형의 성질','평행사변형의 정의와 성질',
+      '여러 가지 사각형의 정의와 성질 & 관계','삼각형의 무게중심 관련 성질'
+    ]
+  }
+};
 
 /* ── 상태 ── */
 const S = {
-  allStudents: [], classes: [], curClass: null,
+  semester: '2', allStudents: [], classes: [], curClass: null,
   student: null, basicTopic: null, advTopic: null,
   grades: { b:[null,null,null], a:[null,null,null] },
   scores: { b:[null,null,null], a:[null,null,null] },
   absent: false,
   timerLeft: 150, timerRunning: false, timerInterval: null,
-  mediaRecorder: null, recChunks: [], recording: false,
+  rec: null, recState: 'idle', recFailReason: '', recToken: 0, recDelivered: null, recBackups: [], wakeLock: null, timerEnd: 0,
   drawTool: 'pen', drawColor: '#1a1a2e', drawSize: 3,
   drawing: false, lastX: 0, lastY: 0
 };
@@ -453,7 +484,7 @@ function buildClassTabs() {
 
 function selectClass(cls) {
   S.curClass = cls;
-  document.querySelectorAll('.tab-btn').forEach(b => {
+  document.querySelectorAll('#class-tabs .tab-btn').forEach(b => {
     b.classList.toggle('active', b.textContent === cls + '반');
   });
   const filtered = S.allStudents.filter(s => String(s.className) === String(cls));
@@ -475,12 +506,28 @@ document.getElementById('student-sel').addEventListener('change', function() {
   document.getElementById('btn-next1').disabled = !S.basicTopic;
 });
 
+/* ── 학기 전환 ── */
+function setSemester(sem) {
+  S.semester = sem;
+  document.getElementById('sem-1').classList.toggle('active', sem === '1');
+  document.getElementById('sem-2').classList.toggle('active', sem === '2');
+  // 학기를 바꾸면 이전 추첨 결과는 무효 → 초기화
+  S.basicTopic = null; S.advTopic = null;
+  document.getElementById('tn-basic').textContent = '추첨 전';
+  document.getElementById('tn-adv').textContent   = '추첨 전';
+  document.getElementById('tr-basic').style.opacity = '.35';
+  document.getElementById('tr-adv').style.opacity   = '.35';
+  document.getElementById('btn-next1').disabled = true;
+  toast(sem + '학기로 설정되었습니다');
+}
+
 /* ── 추첨 ── */
 function drawTopics() {
   if (!S.student) { toast('먼저 학생을 선택하세요'); return; }
-  const bi = Math.floor(Math.random() * BASIC_TOPICS.length);
-  const ai = Math.floor(Math.random() * ADV_TOPICS.length);
-  S.basicTopic = BASIC_TOPICS[bi]; S.advTopic = ADV_TOPICS[ai];
+  const T = TOPICS[S.semester];
+  const bi = Math.floor(Math.random() * T.basic.length);
+  const ai = Math.floor(Math.random() * T.adv.length);
+  S.basicTopic = T.basic[bi]; S.advTopic = T.adv[ai];
   ['tr-basic','tr-adv'].forEach(id => {
     const el = document.getElementById(id);
     el.style.opacity = '1'; el.classList.add('spinning');
@@ -493,31 +540,36 @@ function drawTopics() {
 
 /* ── 타이머 화면 진입 ── */
 function goTimer() {
-  document.getElementById('s2-student').textContent = S.student.number+'번 '+S.student.name;
+  document.getElementById('s2-student').textContent = S.semester+'학기 · '+S.student.className+'반 '+S.student.number+'번 '+S.student.name;
   document.getElementById('s2-basic-topic').textContent = S.basicTopic;
   document.getElementById('s2-adv-topic').textContent   = S.advTopic;
+  discardRecording();
   resetTimer();
   clearCanvas();
   goScreen('s2');
 }
 
-/* ── 타이머 ── */
+/* ── 타이머 (시계 기준: 화면이 잠깐 멈춰도 시간이 어긋나지 않음) ── */
 function startTimer() {
   if (S.timerRunning) return;
   S.timerRunning = true;
+  S.timerEnd = Date.now() + S.timerLeft * 1000;
   document.getElementById('btn-start').disabled = true;
   document.getElementById('timer-status-txt').textContent = '진행 중...';
+  requestWakeLock();          // 화면 꺼짐 방지 (버튼을 누른 직후에 요청)
   startRecording();
-  S.timerInterval = setInterval(() => {
-    S.timerLeft--;
-    updateTimerUI();
-    if (S.timerLeft <= 0) {
-      clearInterval(S.timerInterval);
-      S.timerRunning = false;
-      document.getElementById('timer-status-txt').textContent = '⏰ 시간 종료!';
-      stopRecording();
-    }
-  }, 1000);
+  S.timerInterval = setInterval(timerTick, 250);
+}
+
+function timerTick() {
+  const left = Math.max(0, Math.ceil((S.timerEnd - Date.now()) / 1000));
+  if (left !== S.timerLeft) { S.timerLeft = left; updateTimerUI(); }
+  if (left <= 0) {
+    clearInterval(S.timerInterval);
+    S.timerRunning = false;
+    document.getElementById('timer-status-txt').textContent = '⏰ 시간 종료!';
+    stopRecorder();           // 녹화만 멈춤. 파일 저장은 '저장 및 완료'를 누를 때 함께 이루어짐
+  }
 }
 
 function resetTimer() {
@@ -526,7 +578,12 @@ function resetTimer() {
   document.getElementById('btn-start').disabled = false;
   document.getElementById('timer-status-txt').textContent = '대기 중';
   updateTimerUI();
-  stopRecording();
+}
+
+function onResetClick() {
+  if (hasRecording() && !confirm('지금까지의 녹화가 삭제됩니다.\n처음부터 다시 할까요?')) return;
+  discardRecording();
+  resetTimer();
 }
 
 function updateTimerUI() {
@@ -541,41 +598,46 @@ function updateTimerUI() {
   else { fill.style.background = 'var(--accent)'; }
 }
 
-/* ── 녹화 (캔버스 + 마이크) ── */
-async function startRecording() {
+/* ── 화면 꺼짐 방지 ── */
+async function requestWakeLock() {
   try {
-    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    const canvas = document.getElementById('draw-canvas');
-    const canvasStream = canvas.captureStream(30);
-    const tracks = [...canvasStream.getVideoTracks(), ...audioStream.getAudioTracks()];
-    const combined = new MediaStream(tracks);
-    S.mediaRecorder = new MediaRecorder(combined, { mimeType: getSupportedMime() });
-    S.recChunks = [];
-    S.mediaRecorder.ondataavailable = e => { if(e.data.size>0) S.recChunks.push(e.data); };
-    S.mediaRecorder.onstop = downloadRecording;
-    S.mediaRecorder.start(1000);
-    S.recording = true;
-    document.getElementById('rec-badge').classList.add('active');
-    toast('🔴 녹화 시작 (캔버스 + 음성)');
-  } catch(e) {
-    console.warn('녹화 실패:', e);
-    toast('⚠️ 마이크 권한이 거부되었어요');
+    if (!('wakeLock' in navigator) || S.wakeLock) return;
+    S.wakeLock = await navigator.wakeLock.request('screen');
+    S.wakeLock.addEventListener('release', () => { S.wakeLock = null; });
+  } catch (e) { /* 지원하지 않으면 그냥 진행 */ }
+}
+function releaseWakeLock() {
+  try { if (S.wakeLock) S.wakeLock.release(); } catch (e) {}
+  S.wakeLock = null;
+}
+document.addEventListener('visibilitychange', () => {
+  const r = S.rec;
+  if (document.visibilityState === 'hidden') {
+    if (r && r.recorder.state === 'recording') r.hidden++;
+  } else if (S.recState === 'recording') {
+    requestWakeLock();
+    if (r && r.hidden) toast('⚠️ 녹화 중 화면이 꺼지거나 앱이 전환되었어요');
   }
+});
+window.addEventListener('beforeunload', e => {
+  if (hasRecording()) { e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ── 녹화 (캔버스 + 마이크) ── */
+function hasRecording() {
+  const r = S.rec;
+  return !!(r && (r.blob || (r.recorder && r.recorder.state === 'recording')));
 }
 
-function stopRecording() {
-  if (S.mediaRecorder && S.mediaRecorder.state !== 'inactive') {
-    // 다운로드 파일명을 위해 학생 정보 미리 저장
-    S.lastStudentForRec = S.student ? {
-      className: S.student.className,
-      number:    S.student.number,
-      name:      S.student.name
-    } : null;
-    S.mediaRecorder.stop();
-    S.mediaRecorder.stream.getTracks().forEach(t => t.stop());
-  }
-  S.recording = false;
-  document.getElementById('rec-badge').classList.remove('active');
+function setRecBadge(state, text) {
+  const b = document.getElementById('rec-badge');
+  const t = document.getElementById('rec-badge-txt');
+  b.classList.remove('active', 'fail', 'done');
+  if (state === 'idle') return;
+  b.classList.add('active');
+  if (state === 'failed') b.classList.add('fail');
+  if (state === 'done')   b.classList.add('done');
+  t.textContent = text || ({ recording: 'REC', starting: '마이크 확인 중', failed: '⚠ 녹화 안 됨', done: '녹화 완료' })[state];
 }
 
 function getSupportedMime() {
@@ -583,18 +645,152 @@ function getSupportedMime() {
   return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
 }
 
-function downloadRecording() {
-  if (!S.recChunks.length) return;
-  const blob = new Blob(S.recChunks, { type: 'video/webm' });
+async function startRecording() {
+  discardRecording();                       // 혹시 남아 있는 이전 녹화는 정리
+  const token = ++S.recToken;
+  S.recState = 'starting';
+  S.recFailReason = '';
+  setRecBadge('starting');
+  let audioStream = null;
+  try {
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    if (token !== S.recToken) { audioStream.getTracks().forEach(t => t.stop()); return; }   // 그 사이 리셋/취소됨
+    const canvas = document.getElementById('draw-canvas');
+    const canvasStream = canvas.captureStream(30);
+    const stream = new MediaStream([...canvasStream.getVideoTracks(), ...audioStream.getAudioTracks()]);
+    const mime = getSupportedMime();
+    const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    const stu = S.student || {};
+    const r = {
+      recorder, stream, audioStream, chunks: [], blob: null,
+      startedAt: Date.now(), seconds: 0, hidden: 0, error: '', micEnded: false,
+      semester: S.semester,
+      student: { className: stu.className, number: stu.number, name: stu.name }
+    };
+    recorder.ondataavailable = e => { if (e.data && e.data.size > 0) r.chunks.push(e.data); };
+    recorder.onerror = e => { r.error = (e.error && e.error.name) || 'recorder-error'; };
+    audioStream.getAudioTracks().forEach(t => { t.onended = () => { r.micEnded = true; }; });
+    recorder.start(1000);
+    S.rec = r;
+    S.recState = 'recording';
+    setRecBadge('recording');
+  } catch (e) {
+    if (audioStream) audioStream.getTracks().forEach(t => t.stop());
+    if (token !== S.recToken) return;
+    S.recState = 'failed';
+    S.recFailReason = (e && e.name === 'NotAllowedError') ? '마이크거부' : ('오류:' + ((e && e.name) || e));
+    setRecBadge('failed');
+    toast('⚠️ 녹화가 시작되지 않았어요 (' + S.recFailReason + ')');
+  }
+}
+
+// 녹화를 멈추고, 영상 데이터가 다 모이면 resolve (파일로 저장하지는 않음)
+function stopRecorder() {
+  const r = S.rec;
+  if (!r) return Promise.resolve(null);
+  if (r.stopping) return r.stopping;
+  if (r.recorder.state === 'inactive') { finalizeRec(r); return Promise.resolve(r); }
+  r.stopping = new Promise(resolve => {
+    let done = false;
+    const finish = () => { if (done) return; done = true; finalizeRec(r); resolve(r); };
+    r.recorder.onstop = finish;
+    setTimeout(finish, 3000);               // onstop이 오지 않아도 3초 뒤에는 진행
+    try { r.recorder.stop(); } catch (e) { finish(); }
+  });
+  return r.stopping;
+}
+
+function finalizeRec(r) {
+  if (r.finalized) return;
+  r.finalized = true;
+  r.seconds = Math.round((Date.now() - r.startedAt) / 1000);
+  if (r.chunks.length) r.blob = new Blob(r.chunks, { type: r.recorder.mimeType || 'video/webm' });
+  try {
+    r.stream.getTracks().forEach(t => t.stop());
+    r.audioStream.getTracks().forEach(t => t.stop());
+  } catch (e) {}
+  releaseWakeLock();
+  S.recState = r.blob ? 'stopped' : 'failed';
+  setRecBadge(r.blob ? 'done' : 'failed');
+}
+
+// 녹화를 파일 저장 없이 버림 (리셋·뒤로가기·새 학생 시작)
+function discardRecording() {
+  S.recToken++;                             // 마이크 허용 대기 중이던 시작 요청도 무효화
+  const r = S.rec;
+  S.rec = null; S.recDelivered = null; S.recState = 'idle';
+  if (r) {
+    try {
+      r.recorder.ondataavailable = null; r.recorder.onstop = null;
+      if (r.recorder.state !== 'inactive') r.recorder.stop();
+    } catch (e) {}
+    try {
+      r.stream.getTracks().forEach(t => t.stop());
+      r.audioStream.getTracks().forEach(t => t.stop());
+    } catch (e) {}
+  }
+  releaseWakeLock();
+  setRecBadge('idle');
+}
+
+function buildRecName(r) {
+  const d = new Date(r.startedAt);
+  const hhmm = String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+  const s = r.student || {};
+  const ext = ((r.recorder && r.recorder.mimeType) || '').indexOf('mp4') >= 0 ? 'mp4' : 'webm';
+  return r.semester + '학기_' + (s.className ? s.className + '반_' : '') + (s.number ? s.number + '번_' : '') +
+         (s.name || '학생') + '_논구술_' + hhmm + '.' + ext;
+}
+
+function triggerDownload(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const stu  = S.lastStudentForRec || S.student;
-  const cls  = stu ? stu.className : '';
-  const num  = stu ? stu.number : '';
-  const name_str = stu ? stu.name : '학생';
-  const name = (cls ? cls+'반_' : '') + (num ? num+'번_' : '') + name_str + '_논구술.webm';
-  a.href = url; a.download = name; a.click();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = name; a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  // 바로 해제하면 일부 기기에서 다운로드가 취소될 수 있어 1분 뒤에 정리
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 60000);
+}
+
+// 녹화를 파일로 저장하고 결과 상태를 돌려줌
+function deliverRecording(r) {
+  if (!r || !r.blob || r.blob.size < 2000) {
+    const why = (r && r.error) ? r.error : (S.recFailReason || '시작안함');
+    S.rec = null;
+    return { ok: false, status: '없음(' + why + ')' };
+  }
+  const name = buildRecName(r);
+  triggerDownload(r.blob, name);
+  const s = r.student || {};
+  S.recBackups.unshift({
+    name, blob: r.blob, at: new Date(),
+    label: r.semester + '학기 ' + (s.className || '') + '반 ' + (s.number || '') + '번 ' + (s.name || '')
+  });
+  if (S.recBackups.length > 5) S.recBackups.length = 5;
+  renderBackups();
+  let status = 'OK ' + (r.blob.size / 1048576).toFixed(1) + 'MB ' + r.seconds + '초';
+  const flags = [];
+  if (r.hidden)   flags.push('화면이탈' + r.hidden);
+  if (r.micEnded) flags.push('마이크끊김');
+  if (r.error)    flags.push(r.error);
+  if (flags.length) status += ' [' + flags.join(',') + ']';
+  S.rec = null;
+  return { ok: true, status, name };
+}
+
+function renderBackups() {
+  const card = document.getElementById('rec-backup-card');
+  const list = document.getElementById('rec-backup-list');
+  card.style.display = S.recBackups.length ? 'block' : 'none';
+  list.innerHTML = '';
+  S.recBackups.forEach(b => {
+    const row = document.createElement('div'); row.className = 'rb-row';
+    const lab = document.createElement('span');
+    lab.textContent = b.label + ' · ' + String(b.at.getHours()).padStart(2, '0') + ':' + String(b.at.getMinutes()).padStart(2, '0');
+    const btn = document.createElement('button'); btn.className = 'btn btn-ghost btn-sm'; btn.textContent = '다시 받기';
+    btn.onclick = () => triggerDownload(b.blob, b.name);
+    row.appendChild(lab); row.appendChild(btn); list.appendChild(row);
+  });
 }
 
 /* ── 캔버스 ── */
@@ -682,7 +878,10 @@ function clearCanvas() {
 
 /* ── 루브릭 ── */
 function goRubric() {
-  document.getElementById('s3-student').textContent = S.student.number+'번 '+S.student.name;
+  if (!hasRecording()) {
+    if (!confirm('⚠️ 이 학생은 녹화가 되지 않았습니다.\n(▶ 시작을 누르지 않았거나 마이크가 허용되지 않음)\n\n그래도 채점 화면으로 갈까요?')) return;
+  }
+  document.getElementById('s3-student').textContent = S.semester+'학기 · '+S.student.className+'반 '+S.student.number+'번 '+S.student.name;
   document.getElementById('r-basic-chip').textContent = '📌 기초: '+S.basicTopic;
   document.getElementById('r-adv-chip').textContent   = '📌 기본: '+S.advTopic;
   S.grades = {b:[null,null,null],a:[null,null,null]};
@@ -738,6 +937,7 @@ async function saveResult() {
   const aSum = S.scores.a.reduce((a,b)=>a+b,0);
   const g = (arr,i) => arr[i] || '미응시';
   const data = {
+    semester: S.semester,
     studentNumber: S.student.number, studentName: S.student.name,
     className: S.student.className || '',
     basicTopic: S.basicTopic,
@@ -747,14 +947,30 @@ async function saveResult() {
     adv1: g(S.grades.a,0), adv2: g(S.grades.a,1), adv3: g(S.grades.a,2),
     advScore: aSum,
     totalScore: bSum+aSum,
-    note: document.getElementById('note-in').value
+    note: document.getElementById('note-in').value,
+    recStatus: ''
   };
 
-  document.getElementById('btn-save').disabled = true;
-  document.getElementById('btn-save').textContent = '저장 중...';
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.textContent = '저장 중...';
 
-  // JSONP 방식 (CORS 우회)
+  // 1) 녹화를 먼저 마무리해서 파일로 저장 (저장 버튼을 누른 직후라 브라우저가 다운로드를 막지 않음)
+  //    시트 저장이 실패하더라도 녹화 파일은 이미 저장된 상태가 됨
+  if (!S.recDelivered) {
+    try {
+      const r = await stopRecorder();
+      S.recDelivered = deliverRecording(r);
+    } catch (e) {
+      S.recDelivered = { ok: false, status: '오류:' + ((e && e.message) || e) };
+    }
+  }
+  data.recStatus = S.recDelivered.status;
+  if (!S.recDelivered.ok) toast('⚠️ 녹화 파일이 없습니다 ' + S.recDelivered.status);
+
+  // 2) 시트 저장 (JSONP 방식, CORS 우회)
   const params = new URLSearchParams({
+    semester:      data.semester,
     className:     data.className,
     studentNumber: data.studentNumber,
     studentName:   data.studentName,
@@ -770,57 +986,42 @@ async function saveResult() {
     advScore:      data.advScore,
     totalScore:    data.totalScore,
     note:          data.note,
+    recStatus:     data.recStatus,
     callback:      'handleSaveResult'
   });
 
-  // 이전 JSONP 스크립트 태그 제거
-  const old = document.getElementById('jsonp-script');
-  if (old) old.remove();
+  const oldScript = document.getElementById('jsonp-script');
+  if (oldScript) oldScript.remove();
 
-  // 콜백 함수 등록
-  window.handleSaveResult = function(result) {
-    const script = document.getElementById('jsonp-script');
-    if (script) script.remove();
-    if (result.ok) {
-      toast('✅ '+data.studentName+' : '+data.totalScore+'점 저장 완료');
-      document.getElementById('btn-save').textContent = '💾 저장 및 완료';
-      // 학생 정보 백업 (파일명용) - 저장 직후 즉시
-      S.lastStudentForRec = S.student ? {
-        className: S.student.className,
-        number:    S.student.number,
-        name:      S.student.name
-      } : S.lastStudentForRec;
-
-      // 녹화 중이면 멈추고 다운로드 (비동기로 처리)
-      if (S.recording) {
-        stopRecording();  // onstop 콜백에서 downloadRecording 호출됨
-        setTimeout(() => { resetAll(); goScreen('s1'); }, 1500);
-      } else {
-        // 녹화 안 했으면 바로 다음 학생
-        setTimeout(() => { resetAll(); goScreen('s1'); }, 1200);
-      }
-    } else {
-      toast('❌ 저장 실패: '+(result.error||''));
-      document.getElementById('btn-save').disabled = false;
-      document.getElementById('btn-save').textContent = '💾 저장 및 완료';
-    }
-  };
-
-  // 타임아웃 처리 (10초)
+  let finished = false;
   const saveTimeout = setTimeout(() => {
-    toast('❌ 저장 시간 초과. 네트워크를 확인해 주세요.');
-    document.getElementById('btn-save').disabled = false;
-    document.getElementById('btn-save').textContent = '💾 저장 및 완료';
+    if (finished) return;
+    finished = true;
+    toast('❌ 저장 시간 초과. 네트워크를 확인하고 다시 눌러 주세요. (녹화 파일은 이미 저장됨)');
+    btn.disabled = false;
+    btn.textContent = '💾 저장 및 완료';
   }, 10000);
 
-  window._origHandleSave = window.handleSaveResult;
   window.handleSaveResult = function(result) {
+    if (finished) return;
+    finished = true;
     clearTimeout(saveTimeout);
-    window._origHandleSave(result);
+    const sc = document.getElementById('jsonp-script');
+    if (sc) sc.remove();
+    if (result && result.ok) {
+      toast('✅ ' + data.studentName + ' : ' + data.totalScore + '점 저장 완료');
+      btn.textContent = '💾 저장 및 완료';
+      setTimeout(() => { resetAll(); goScreen('s1'); }, 1200);
+    } else {
+      toast('❌ 저장 실패: ' + ((result && result.error) || ''));
+      btn.disabled = false;
+      btn.textContent = '💾 저장 및 완료';
+    }
   };
 
   const script = document.createElement('script');
   script.id  = 'jsonp-script';
+  script.onerror = () => window.handleSaveResult({ ok: false, error: '네트워크 오류' });
   script.src = APPS_SCRIPT_URL + '?' + params.toString();
   document.body.appendChild(script);
 }
@@ -830,10 +1031,18 @@ function goScreen(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
-function goBack(id) { goScreen(id); }
+function goBack(id) {
+  // 타이머 화면에서 첫 화면으로 돌아가면 이 학생의 녹화는 버려지므로 확인
+  if (id === 's1') {
+    if (hasRecording() && !confirm('이 학생의 녹화가 삭제됩니다.\n정말 돌아갈까요?')) return;
+    discardRecording();
+    resetTimer();
+  }
+  goScreen(id);
+}
 
 function resetAll() {
-  S.lastStudentForRec=null;
+  discardRecording();
   S.student=null; S.basicTopic=null; S.advTopic=null;
   document.getElementById('student-sel').value='';
   document.getElementById('tn-basic').textContent='추첨 전';
